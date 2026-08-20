@@ -1,5 +1,8 @@
 const Docker = require('dockerode');
 const os = require('os');
+const path = require('path');
+const fs = require('fs');
+const tar = require('tar-fs');
 const config = require('../config');
 
 const isWin = process.platform === 'win32';
@@ -33,15 +36,30 @@ const getAllContainers = async (all = true) => {
     
     try {
         const containers = await docker.listContainers({ all });
-        return containers.map(c => ({
-            id: c.Id.slice(0, 12),
-            name: c.Names[0]?.replace('/', '') || 'unnamed',
-            image: c.Image,
-            status: c.Status,
-            running: c.State === 'running',
-            created: c.Created,
-            ports: c.Ports,
-            labels: c.Labels || {}
+        return await Promise.all(containers.map(async c => {
+            let memoryLimit = 'No limit';
+            try {
+                const containerInstance = docker.getContainer(c.Id);
+                const info = await containerInstance.inspect();
+                const memBytes = info.HostConfig?.Memory || 0;
+                if (memBytes > 0) {
+                    const mb = Math.round(memBytes / (1024 * 1024));
+                    memoryLimit = mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+                }
+            } catch (e) {
+                // fallback
+            }
+            return {
+                id: c.Id.slice(0, 12),
+                name: c.Names[0]?.replace('/', '') || 'unnamed',
+                image: c.Image,
+                status: c.Status,
+                running: c.State === 'running',
+                created: c.Created,
+                ports: c.Ports,
+                memoryLimit,
+                labels: c.Labels || {}
+            };
         }));
     } catch (error) {
         console.error('error fetching containers:', error);
@@ -66,6 +84,11 @@ const getContainer = async (id) => {
 
         const binds = (info.HostConfig?.Binds || []).join('\n');
         const env = (info.Config?.Env || []).filter(e => !e.startsWith('PATH=')).join('\n');
+        const memBytes = info.HostConfig?.Memory || 0;
+        const memoryLimitMB = memBytes > 0 ? Math.round(memBytes / (1024 * 1024)) : 0;
+        const memoryLimitFormatted = memoryLimitMB > 0 
+            ? (memoryLimitMB >= 1024 ? `${(memoryLimitMB / 1024).toFixed(1)} GB` : `${memoryLimitMB} MB`) 
+            : 'No limit';
 
         return {
             id: info.Id.slice(0, 12),
@@ -82,6 +105,8 @@ const getContainer = async (id) => {
             volumes: binds,
             labels: info.Config.Labels || {},
             env,
+            memoryLimit: memoryLimitMB,
+            memoryLimitFormatted,
             restartPolicy: info.HostConfig?.RestartPolicy?.Name || 'unless-stopped',
             network: info.NetworkSettings.Networks || {}
         };
@@ -108,6 +133,7 @@ const updateContainer = async (id, config) => {
         env: config.env,
         volumes: config.volumes,
         restartPolicy: config.restartPolicy,
+        memoryLimit: config.memoryLimit,
         autoStart: config.autoStart !== false
     });
 };
@@ -302,7 +328,25 @@ const getSystemInfo = async () => {
     }
 };
 
-const createContainer = async ({ name, image, ports, env, volumes, restartPolicy, autoStart = true }) => {
+const parseMemoryLimit = (input) => {
+    if (!input) return 0;
+    if (typeof input === 'number') return Math.max(0, input * 1024 * 1024);
+    const str = input.toString().trim().toLowerCase();
+    if (!str || str === '0' || str === 'unlimited' || str === 'no limit') return 0;
+    
+    if (str.endsWith('gb') || str.endsWith('g')) {
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : Math.round(num * 1024 * 1024 * 1024);
+    }
+    if (str.endsWith('mb') || str.endsWith('m')) {
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : Math.round(num * 1024 * 1024);
+    }
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : Math.round(num * 1024 * 1024);
+};
+
+const createContainer = async ({ name, image, ports, env, volumes, restartPolicy, memoryLimit, autoStart = true }) => {
     if (!docker) throw new Error('Docker not available');
 
     // pull image if not locally present
@@ -346,16 +390,24 @@ const createContainer = async ({ name, image, ports, env, volumes, restartPolicy
 
     const RestartPolicy = restartPolicy ? { Name: restartPolicy } : { Name: 'unless-stopped' };
 
+    const HostConfig = {
+        PortBindings,
+        Binds,
+        RestartPolicy
+    };
+
+    const memoryBytes = parseMemoryLimit(memoryLimit);
+    if (memoryBytes > 0) {
+        HostConfig.Memory = memoryBytes;
+        HostConfig.MemorySwap = memoryBytes;
+    }
+
     const container = await docker.createContainer({
         name: name || undefined,
         Image: image,
         ExposedPorts,
         Env,
-        HostConfig: {
-            PortBindings,
-            Binds,
-            RestartPolicy
-        }
+        HostConfig
     });
 
     if (autoStart) {
@@ -387,6 +439,130 @@ const getAllImages = async () => {
     }
 };
 
+const getImage = async (id) => {
+    if (!docker) throw new Error('Docker not available');
+
+    try {
+        const image = docker.getImage(id);
+        const info = await image.inspect();
+        const sizeMb = Math.round((info.Size / (1024 * 1024)) * 10) / 10;
+        return {
+            id: info.Id.replace('sha256:', '').slice(0, 12),
+            fullId: info.Id,
+            tags: info.RepoTags || [],
+            size: sizeMb > 1024 ? `${(sizeMb / 1024).toFixed(2)} GB` : `${sizeMb} MB`,
+            os: info.Os || 'linux',
+            architecture: info.Architecture || 'amd64',
+            author: info.Author || '-',
+            created: info.Created,
+            dockerVersion: info.DockerVersion || '-',
+            cmd: info.Config?.Cmd?.join(' ') || '-',
+            entrypoint: info.Config?.Entrypoint?.join(' ') || '-',
+            env: (info.Config?.Env || []).filter(e => !e.startsWith('PATH=')),
+            exposedPorts: Object.keys(info.Config?.ExposedPorts || {})
+        };
+    } catch (error) {
+        throw new Error('Failed to inspect image: ' + error.message);
+    }
+};
+
+const pullImage = async (imageName) => {
+    if (!docker) throw new Error('Docker not available');
+    if (!imageName || typeof imageName !== 'string') {
+        throw new Error('Image name is required');
+    }
+
+    const trimmed = imageName.trim();
+    const fullImage = trimmed.includes(':') ? trimmed : `${trimmed}:latest`;
+
+    try {
+        const stream = await docker.pull(fullImage);
+        await new Promise((resolve, reject) => {
+            docker.modem.followProgress(stream, (err, res) => {
+                if (err) return reject(err);
+                resolve(res);
+            });
+        });
+        return { success: true, image: fullImage };
+    } catch (error) {
+        throw new Error('Failed to pull image: ' + error.message);
+    }
+};
+
+const tagImage = async (id, repo, tag = 'latest') => {
+    if (!docker) throw new Error('Docker not available');
+    if (!repo || typeof repo !== 'string') {
+        throw new Error('Target repository is required');
+    }
+
+    try {
+        const image = docker.getImage(id);
+        const targetTag = (tag && tag.trim()) ? tag.trim() : 'latest';
+        await image.tag({ repo: repo.trim(), tag: targetTag });
+        return { success: true, repo: repo.trim(), tag: targetTag };
+    } catch (error) {
+        throw new Error('Failed to tag image: ' + error.message);
+    }
+};
+
+const buildImage = async ({ contextPath, imageName, tag = 'latest', dockerfile = 'Dockerfile' }) => {
+    if (!docker) throw new Error('Docker not available');
+    if (!contextPath || typeof contextPath !== 'string') {
+        throw new Error('Source context directory is required');
+    }
+    if (!imageName || typeof imageName !== 'string') {
+        throw new Error('Image name is required');
+    }
+
+    const resolvedPath = path.resolve(contextPath.trim());
+    if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`Source directory "${contextPath}" does not exist on host`);
+    }
+
+    const dockerfileName = (dockerfile && dockerfile.trim()) ? dockerfile.trim() : 'Dockerfile';
+    const dockerfilePath = path.join(resolvedPath, dockerfileName);
+    if (!fs.existsSync(dockerfilePath)) {
+        throw new Error(`Dockerfile "${dockerfileName}" not found in source directory`);
+    }
+
+    const targetTag = (tag && tag.trim()) ? tag.trim() : 'latest';
+    const fullImageTag = `${imageName.trim()}:${targetTag}`;
+    const tarStream = tar.pack(resolvedPath);
+
+    try {
+        const stream = await docker.buildImage(tarStream, {
+            t: fullImageTag,
+            dockerfile: dockerfileName
+        });
+
+        const buildLogs = [];
+        await new Promise((resolve, reject) => {
+            docker.modem.followProgress(
+                stream,
+                (err, res) => {
+                    if (err) return reject(err);
+                    resolve(res);
+                },
+                (event) => {
+                    if (event.stream) {
+                        buildLogs.push(event.stream);
+                    } else if (event.error) {
+                        buildLogs.push(`ERROR: ${event.error}`);
+                    }
+                }
+            );
+        });
+
+        return {
+            success: true,
+            image: fullImageTag,
+            logs: buildLogs.join('').trim()
+        };
+    } catch (error) {
+        throw new Error('Failed to build image: ' + error.message);
+    }
+};
+
 const deleteImage = async (id, force = true) => {
     if (!docker) throw new Error('Docker not available');
 
@@ -409,6 +585,10 @@ module.exports = {
     createContainer,
     updateContainer,
     getAllImages,
+    getImage,
+    pullImage,
+    tagImage,
+    buildImage,
     deleteImage,
     getLogs,
     getStats,

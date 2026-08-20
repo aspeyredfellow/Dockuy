@@ -1,130 +1,88 @@
 # Dockuy
 
-A lightweight, clean, and fast web management interface for Docker. Dockuy allows you to manage containers and images directly from your browser using a simple single-password authentication system.
+A clean, fast, and lightweight Docker management web UI. No database, no complex setup, just single-password access directly connected to your Docker daemon.
 
 ---
 
-## Overview
+## Why Dockuy?
 
-Dockuy is built for developers and system administrators who want a simple Docker dashboard without heavy databases or complex multi-user setups. It communicates directly with your Docker daemon via Unix socket or Windows named pipe.
+- **Zero Heavy Setup**: Connects straight to `/var/run/docker.sock` or Windows named pipe. No database required.
+- **Fast & Minimal**: Clean white & blue interface with instant load times (< 50MB RAM footprint).
+- **Single Password Auth**: Protect your dashboard with a secure bcrypt password hash and JWT session cookies.
+- **Cross-Platform**: Automatically detects real OS, Kernel, CPU, and Docker specifications on Linux, macOS, and Windows.
 
 ---
 
 ## Features
 
-### 1. Dashboard and Host Information
-- Real-time overview of total containers, active running containers, and stopped containers.
-- Total local Docker images count.
-- System CPU cores and total allocated host memory.
-- Automatic detection of host Operating System, Kernel version, CPU Architecture, Docker Engine version, and Storage Driver.
-- Quick action shortcuts to manage containers and images.
-
-### 2. Container Management
-- View all containers in a clean table (desktop) or mobile-friendly card layout.
-- Container controls: Start, Stop, Restart, and Delete.
-- Create new containers with custom port mappings, environment variables, volume mounts, and restart policies.
-- Quick preset buttons for common images (Nginx, Redis, MySQL, PostgreSQL, MongoDB, Node.js).
-- Edit and recreate existing containers with updated parameters.
-
-### 3. Image Management
-- List all local Docker images with repository names, image tags, image IDs, and disk size.
-- Delete unused or old Docker images with confirmation dialogs.
-
-### 4. Security and Access Control
-- Single master password authentication with bcrypt hashing.
-- Secure JWT-based session management stored in HTTP-only cookies.
-- Rate limiting protection on login endpoints and general API requests.
-- Security headers enabled using Helmet middleware.
-
----
-
-## Prerequisites
-
-Before running Dockuy, ensure you have the following installed on your host system:
-
-- Node.js (version 18.x or higher recommended)
-- npm (version 9.x or higher)
-- Docker Engine / Docker Desktop (running and accessible)
+- **Dashboard**: Live container metrics, memory/CPU overview, and host system specs.
+- **Container Management**: Create, start, stop, restart, edit, and recreate containers with customizable port mappings, environment variables, volume mounts, restart policies, and **Memory/RAM resource limits**.
+- **Image Management**: Browse local images, **build new images from source directories (Dockerfile)**, pull from registries (Docker Hub), manage tags, inspect specifications, and delete unused images.
+- **Security**: Password protection, rate limiting, and secure HTTP-only cookies.
 
 ---
 
 ## Quick Start
 
-### 1. Clone the Repository
+### 1. Clone and Install
+
 ```bash
 git clone <repository-url>
 cd Dockuy
-```
-
-### 2. Install Dependencies
-```bash
 npm install
 ```
 
-### 3. Generate Password Hash
-Dockuy uses a bcrypt password hash for authentication. Generate a hash for your password using the built-in script:
+### 2. Generate Password Hash
+
+Generate a secure bcrypt hash for your login password:
 
 ```bash
-npm run hash "YourSecurePassword"
+npm run hash "YourPasswordHere"
 ```
 
-Copy the generated hash output (for example: `$2b$10$wK8gJ...`).
+Copy the output hash string (e.g. `$2b$10$...`).
 
-### 4. Configure Environment Variables
-Create a `.env` file in the root directory:
+### 3. Setup Environment (.env)
 
-```bash
-cp .env.example .env
-```
-
-If `.env.example` is not present, create a `.env` file with the following variables:
+Create a `.env` file in the project root:
 
 ```env
 PORT=3000
 NODE_ENV=production
-PASSWORD_HASH=$2b$10$YourGeneratedBcryptHashHere
-JWT_SECRET=your-random-long-secret-string
-DOCKER_HOST=/var/run/docker.sock
+PASSWORD_HASH="$2b$10$YourGeneratedHashHere"
+JWT_SECRET="your-random-secret-key"
+DOCKER_HOST="/var/run/docker.sock"
 ```
 
-> Note for Windows users: If you are running Docker Desktop on Windows natively without WSL socket forwarding, set `DOCKER_HOST=//./pipe/docker_engine`.
+> Windows Note: If running Docker Desktop natively on Windows, set `DOCKER_HOST="//./pipe/docker_engine"`.
 
-### 5. Start the Application
+### 4. Run
 
-For production mode:
 ```bash
 npm start
 ```
 
 For development mode (with auto-reload):
+
 ```bash
 npm run dev
 ```
 
-Open your browser and navigate to:
-```
-http://localhost:3000
-```
-
-Enter your password to unlock the dashboard.
+Open `http://localhost:3000` in your browser and enter your password.
 
 ---
 
-## Configuration Options
+## Environment Variables
 
-All configuration settings are controlled via environment variables:
-
-| Variable | Description | Default Value |
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `PORT` | HTTP port for the web server | `3000` |
-| `NODE_ENV` | Application environment (`development` or `production`) | `development` |
-| `PASSWORD_HASH` | Bcrypt hash of your master login password | Required |
-| `JWT_SECRET` | Secret key used to sign JWT authentication tokens | `dockuy-super-secret-key-change-this` |
-| `DOCKER_HOST` | Path to Docker daemon socket or TCP address | `/var/run/docker.sock` |
-| `RATE_LIMIT_WINDOW_MS` | Time window for rate limiting in milliseconds | `900000` (15 minutes) |
-| `RATE_LIMIT_MAX` | Maximum API requests allowed per time window | `100` |
-| `LOGIN_RATE_LIMIT_MAX` | Maximum login attempts allowed per time window | `5` |
-| `CORS_ORIGIN` | Allowed CORS origin | `http://localhost:3000` |
+| `PORT` | `3000` | Server listening port |
+| `PASSWORD_HASH` | *Required* | Bcrypt hash of your login password |
+| `JWT_SECRET` | `dockuy-super-secret-key-change-this` | Secret key for JWT session tokens |
+| `DOCKER_HOST` | `/var/run/docker.sock` | Path to Docker socket or TCP address |
+| `NODE_ENV` | `development` | Runtime environment (`development` / `production`) |
+| `RATE_LIMIT_MAX` | `100` | Max API requests per 15 minutes |
+| `LOGIN_RATE_LIMIT_MAX` | `5` | Max login attempts per 15 minutes |
 
 ---
 
@@ -133,85 +91,21 @@ All configuration settings are controlled via environment variables:
 ```
 Dockuy/
 ├── src/
-│   ├── config/
-│   │   └── index.js              # Centralized environment configuration
-│   ├── controllers/
-│   │   ├── authController.js     # Login and session handling
-│   │   ├── containerController.js# Container view and API controllers
-│   │   └── imageController.js    # Image view and API controllers
-│   ├── middleware/
-│   │   ├── auth.js               # JWT authentication verification
-│   │   └── rateLimit.js          # Rate limiting middleware
-│   ├── public/
-│   │   ├── css/
-│   │   │   ├── style.css         # Application custom styles and theme
-│   │   │   └── tailwind.min.css  # Tailwind CSS framework
-│   │   └── js/
-│   │       └── main.js           # Client UI scripts and dialogs
-│   ├── routes/
-│   │   ├── auth.js               # Authentication routes
-│   │   ├── containers.js         # Container routes
-│   │   ├── images.js             # Image routes
-│   │   └── system.js             # System info and healthcheck routes
-│   ├── services/
-│   │   └── docker.js             # Dockerode wrapper service
-│   ├── views/
-│   │   ├── partials/
-│   │   │   ├── footer.ejs        # Footer partial
-│   │   │   ├── header.ejs        # Header and navigation partial
-│   │   │   └── sidebar.ejs       # Sidebar navigation partial
-│   │   ├── containers.ejs        # Container management view
-│   │   ├── dashboard.ejs         # System overview dashboard view
-│   │   ├── error.ejs             # Error page view
-│   │   ├── images.ejs            # Image management view
-│   │   └── login.ejs             # Login view
-│   ├── app.js                    # Express application setup
-│   └── server.js                 # Server entry point
-├── package.json                  # Node.js dependencies and scripts
-└── README.md                     # Project documentation
+│   ├── config/          # Environment configuration
+│   ├── controllers/     # Route logic (auth, containers, images)
+│   ├── middleware/      # Auth & rate limit guards
+│   ├── public/          # Styles (Tailwind + CSS) and client JS
+│   ├── routes/          # Express route definitions
+│   ├── services/        # Dockerode service wrapper
+│   ├── views/           # EJS views and partials
+│   ├── app.js           # Express app setup
+│   └── server.js        # Server entry point
+├── package.json
+└── README.md
 ```
-
----
-
-## API Endpoints
-
-### Authentication
-- `GET /login` : Render login page
-- `POST /api/login` : Authenticate user with password and issue JWT cookie
-- `GET /logout` : Clear authentication session cookie
-
-### System
-- `GET /api/system/info` : Return Docker daemon metrics and host system specifications
-- `GET /api/system/health` : Basic service healthcheck endpoint
-
-### Containers
-- `GET /containers` : Render container management page
-- `GET /containers/api/:id` : Fetch detailed configuration for a specific container
-- `POST /containers/api/create` : Create and start a new container
-- `POST /containers/api/:id/update` : Update and recreate an existing container
-- `POST /containers/api/:id/:action` : Perform action on container (`start`, `stop`, `restart`)
-- `DELETE /containers/api/:id` : Remove container from host
-
-### Images
-- `GET /images` : Render image management page
-- `DELETE /images/api/:id` : Remove image from host
-
----
-
-## Troubleshooting
-
-### 1. Docker Daemon Connection Error
-If you see an error stating "Failed to connect to Docker daemon":
-- Make sure Docker is running (`docker ps` works in terminal).
-- Verify that your user account has permission to read `/var/run/docker.sock`. On Linux, add your user to the docker group: `sudo usermod -aG docker $USER`.
-- If using Docker Desktop on Windows, ensure the named pipe `//./pipe/docker_engine` is active or WSL integration is turned on.
-
-### 2. Login Failed
-- Ensure `PASSWORD_HASH` in `.env` is wrapped in single or double quotes if it contains special characters like `$`.
-- Regenerate the password hash using `npm run hash "YourPassword"`.
 
 ---
 
 ## License
 
-This project is open-source software licensed under the MIT License.
+MIT License. Open source and free to use.

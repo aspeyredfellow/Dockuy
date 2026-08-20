@@ -1,29 +1,67 @@
 <%- include('partials/header') %>
 
-<div class="space-y-6">
+<div class="space-y-6 max-w-7xl mx-auto">
     <% if (typeof error !== 'undefined' && error) { %>
-        <div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-            <%= error %>
+        <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <svg width="18" height="18" class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <span><%= error %></span>
+            </div>
         </div>
     <% } %>
 
     <!-- Images Container Card -->
     <div class="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
-        <div class="px-4 sm:px-6 py-4 border-b border-blue-100 flex items-center justify-between">
+        <div class="px-4 sm:px-6 py-4 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-                <h2 class="text-lg font-bold text-blue-900">Local Docker Images</h2>
-                <p class="text-xs text-blue-400 mt-0.5"><%= images ? images.length : 0 %> images available</p>
+                <h2 class="text-lg font-bold text-blue-900">Docker Images Repository</h2>
+                <p class="text-xs text-blue-400 mt-0.5"><%= images ? images.length : 0 %> local images stored on host</p>
             </div>
-            <button onclick="window.location.reload()" class="px-3.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
-                Refresh
-            </button>
+            <div class="flex items-center space-x-2 flex-wrap">
+                <!-- Build Image Button -->
+                <button onclick="openBuildModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-semibold flex items-center shadow-sm transition-colors">
+                    <svg width="16" height="16" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    Build Image
+                </button>
+                <!-- Pull Image Button -->
+                <button onclick="openPullModal()" class="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs sm:text-sm font-semibold flex items-center transition-colors">
+                    <svg width="16" height="16" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Pull Image
+                </button>
+                <!-- Refresh Button -->
+                <button onclick="window.location.reload()" class="px-3 py-2 bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200 text-xs sm:text-sm font-medium transition-colors">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Search / Filter Bar -->
+        <div class="px-4 sm:px-6 py-3 bg-blue-50/30 border-b border-blue-100">
+            <div class="relative max-w-sm">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    onkeyup="filterImages()" 
+                    placeholder="Search images by name or tag..." 
+                    class="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-blue-200 rounded-lg text-gray-900 placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <svg width="16" height="16" class="w-4 h-4 absolute left-3 top-2.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
         </div>
 
         <!-- Mobile Card List (Screen < md) -->
-        <div class="block md:hidden divide-y divide-blue-100">
+        <div class="block md:hidden divide-y divide-blue-100" id="mobile-image-list">
             <% if (images && images.length > 0) { %>
                 <% images.forEach(img => { %>
-                    <div class="p-4 space-y-2.5">
+                    <div class="p-4 space-y-2.5 image-item" data-search="<%= img.primaryTag.toLowerCase() %> <%= img.id.toLowerCase() %>">
                         <div class="flex items-start justify-between">
                             <div class="flex-1 pr-2">
                                 <h3 class="font-bold text-sm text-blue-900 break-all"><%= img.primaryTag %></h3>
@@ -33,60 +71,84 @@
                                 <%= img.size %>
                             </span>
                         </div>
-                        <div class="flex items-center justify-end pt-1">
-                            <button onclick="deleteImage('<%= img.id %>', '<%= img.primaryTag %>')" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-xs rounded-lg border border-red-200 flex items-center justify-center space-x-1">
-                                <svg width="14" height="14" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                Delete Image
+                        <div class="flex items-center space-x-1.5 pt-1">
+                            <a href="/containers?image=<%= encodeURIComponent(img.primaryTag) %>" class="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg text-center shadow-sm">
+                                Run
+                            </a>
+                            <button onclick="openInspectModal('<%= img.id %>')" class="flex-1 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-lg border border-blue-200 text-center">
+                                Inspect
+                            </button>
+                            <button onclick="openTagModal('<%= img.id %>', '<%= img.primaryTag %>')" class="flex-1 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-xs rounded-lg border border-amber-200 text-center">
+                                Tag
+                            </button>
+                            <button onclick="deleteImage('<%= img.id %>', '<%= img.primaryTag %>')" class="flex-1 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-xs rounded-lg border border-red-200 text-center">
+                                Delete
                             </button>
                         </div>
                     </div>
                 <% }) %>
             <% } else { %>
                 <div class="p-8 text-center text-sm text-blue-400">
-                    No images found locally.
+                    No images found locally. Click "Build Image" or "Pull Image" to add one.
                 </div>
             <% } %>
         </div>
 
         <!-- Desktop Table View (Screen >= md) -->
         <div class="hidden md:block">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse" id="desktop-image-table">
                 <thead>
                     <tr class="bg-blue-50/50 text-xs font-semibold text-blue-500 uppercase border-b border-blue-100">
                         <th class="px-6 py-3.5">Repository / Tag</th>
                         <th class="px-6 py-3.5">Image ID</th>
                         <th class="px-6 py-3.5">Size</th>
-                        <th class="px-6 py-3.5 text-right">Action</th>
+                        <th class="px-6 py-3.5 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-blue-100 text-sm">
                     <% if (images && images.length > 0) { %>
                         <% images.forEach(img => { %>
-                            <tr class="hover:bg-blue-50/20 transition-colors">
+                            <tr class="hover:bg-blue-50/20 transition-colors image-row" data-search="<%= img.primaryTag.toLowerCase() %> <%= img.id.toLowerCase() %>">
                                 <td class="px-6 py-4 font-semibold text-blue-900">
-                                    <%= img.primaryTag %>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="p-1.5 bg-blue-50 text-blue-600 rounded">
+                                            <svg width="16" height="16" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </span>
+                                        <span><%= img.primaryTag %></span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-xs font-mono text-blue-600">
                                     <%= img.id %>
                                 </td>
                                 <td class="px-6 py-4 text-xs font-medium text-gray-600">
-                                    <span class="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md">
+                                    <span class="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-100">
                                         <%= img.size %>
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button onclick="deleteImage('<%= img.id %>', '<%= img.primaryTag %>')" class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold rounded-lg transition-colors">
-                                        Delete
-                                    </button>
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                    <div class="inline-flex items-center space-x-1.5 text-xs">
+                                        <a href="/containers?image=<%= encodeURIComponent(img.primaryTag) %>" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors">
+                                            Run
+                                        </a>
+                                        <button onclick="openInspectModal('<%= img.id %>')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200 transition-colors">
+                                            Inspect
+                                        </button>
+                                        <button onclick="openTagModal('<%= img.id %>', '<%= img.primaryTag %>')" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-lg border border-amber-200 transition-colors">
+                                            Tag
+                                        </button>
+                                        <button onclick="deleteImage('<%= img.id %>', '<%= img.primaryTag %>')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg border border-red-200 transition-colors">
+                                            Delete
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <% }) %>
                     <% } else { %>
                         <tr>
                             <td colspan="4" class="px-6 py-12 text-center text-blue-400">
-                                No images found locally.
+                                No images found locally. Click "Build Image" or "Pull Image" to add one.
                             </td>
                         </tr>
                     <% } %>
@@ -96,7 +158,490 @@
     </div>
 </div>
 
+<!-- Modal: Build Docker Image -->
+<div id="build-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl border border-blue-100 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col my-auto animate-scale-up">
+        <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+            <h3 class="text-base font-bold text-blue-900">Build Docker Image</h3>
+            <button onclick="closeBuildModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100" aria-label="Close">
+                <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <form id="build-form" onsubmit="handleBuildSubmit(event)" class="p-5 space-y-4">
+            <!-- Source Context Path -->
+            <div>
+                <label for="build-source" class="block text-xs font-semibold text-gray-700 mb-1">Source Context Directory *</label>
+                <input 
+                    type="text" 
+                    id="build-source" 
+                    required 
+                    placeholder="/home/user/my-project" 
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <p class="text-xs text-blue-400 mt-1">Absolute or relative path to the directory containing your project files.</p>
+            </div>
+
+            <!-- Image Name -->
+            <div>
+                <label for="build-name" class="block text-xs font-semibold text-gray-700 mb-1">Image Name *</label>
+                <input 
+                    type="text" 
+                    id="build-name" 
+                    required 
+                    placeholder="my-project" 
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+            </div>
+
+            <!-- Tag -->
+            <div>
+                <label for="build-tag" class="block text-xs font-semibold text-gray-700 mb-1">Tag</label>
+                <input 
+                    type="text" 
+                    id="build-tag" 
+                    placeholder="latest" 
+                    value="latest"
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+            </div>
+
+            <!-- Dockerfile -->
+            <div>
+                <label for="build-dockerfile" class="block text-xs font-semibold text-gray-700 mb-1">Dockerfile Name / Path</label>
+                <input 
+                    type="text" 
+                    id="build-dockerfile" 
+                    placeholder="Dockerfile" 
+                    value="Dockerfile"
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+            </div>
+
+            <!-- Build Status / Logs Box -->
+            <div id="build-status" class="hidden p-3 bg-slate-900 border border-slate-800 rounded-xl text-xs space-y-2">
+                <div class="flex items-center space-x-2 text-blue-400">
+                    <svg class="animate-spin w-4 h-4 text-blue-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <span id="build-status-text" class="font-medium">Building Docker image... please wait.</span>
+                </div>
+                <div id="build-logs-container" class="hidden max-h-40 overflow-y-auto bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300 whitespace-pre-wrap"></div>
+            </div>
+
+            <div class="pt-3 border-t border-blue-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="closeBuildModal()" class="px-4 py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-100 rounded-xl font-medium">Cancel</button>
+                <button type="submit" id="build-submit-btn" class="px-5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm flex items-center">
+                    Build Image
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Pull Image -->
+<div id="pull-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl border border-blue-100 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col my-auto animate-scale-up">
+        <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+            <h3 class="text-base font-bold text-blue-900">Pull Image from Registry</h3>
+            <button onclick="closePullModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100" aria-label="Close">
+                <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <form id="pull-form" onsubmit="handlePullSubmit(event)" class="p-5 space-y-4">
+            <!-- Presets -->
+            <div>
+                <label class="block text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Quick Presets</label>
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button type="button" onclick="selectImagePreset('nginx:alpine')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">nginx:alpine</button>
+                    <button type="button" onclick="selectImagePreset('redis:alpine')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">redis:alpine</button>
+                    <button type="button" onclick="selectImagePreset('node:20-alpine')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">node:20-alpine</button>
+                    <button type="button" onclick="selectImagePreset('postgres:16-alpine')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">postgres:16-alpine</button>
+                    <button type="button" onclick="selectImagePreset('mongo:latest')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">mongo:latest</button>
+                    <button type="button" onclick="selectImagePreset('python:3.11-alpine')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">python:alpine</button>
+                    <button type="button" onclick="selectImagePreset('alpine:latest')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-medium">alpine:latest</button>
+                </div>
+            </div>
+
+            <div>
+                <label for="pull-image-input" class="block text-xs font-semibold text-gray-700 mb-1">Docker Image Name *</label>
+                <input 
+                    type="text" 
+                    id="pull-image-input" 
+                    required 
+                    placeholder="e.g. nginx:latest, ubuntu:22.04, redis:alpine" 
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <p class="text-xs text-blue-400 mt-1">If no tag is specified, :latest will be used by default.</p>
+            </div>
+
+            <div id="pull-status" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 flex items-center space-x-2">
+                <svg class="animate-spin w-4 h-4 text-blue-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span id="pull-status-text">Pulling image layers from registry... please wait.</span>
+            </div>
+
+            <div class="pt-3 border-t border-blue-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="closePullModal()" class="px-4 py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-100 rounded-xl font-medium">Cancel</button>
+                <button type="submit" id="pull-submit-btn" class="px-5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm flex items-center">
+                    Pull Image
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit / Tag Image -->
+<div id="tag-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl border border-blue-100 shadow-2xl max-w-md w-full overflow-hidden flex flex-col my-auto animate-scale-up">
+        <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+            <h3 class="text-base font-bold text-blue-900">Edit / Retag Image</h3>
+            <button onclick="closeTagModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100" aria-label="Close">
+                <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <form id="tag-form" onsubmit="handleTagSubmit(event)" class="p-5 space-y-4">
+            <input type="hidden" id="tag-image-id" value="" />
+
+            <div class="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-xs space-y-1">
+                <div class="text-blue-500 font-medium">Target Image ID: <span id="tag-display-id" class="font-mono font-bold text-blue-900">-</span></div>
+                <div class="text-blue-500 font-medium">Current Tag: <span id="tag-display-tag" class="font-bold text-blue-900">-</span></div>
+            </div>
+
+            <div>
+                <label for="tag-repo-input" class="block text-xs font-semibold text-gray-700 mb-1">New Repository Name *</label>
+                <input 
+                    type="text" 
+                    id="tag-repo-input" 
+                    required 
+                    placeholder="e.g. my-app or custom-nginx" 
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+            </div>
+
+            <div>
+                <label for="tag-tag-input" class="block text-xs font-semibold text-gray-700 mb-1">Tag (optional)</label>
+                <input 
+                    type="text" 
+                    id="tag-tag-input" 
+                    placeholder="e.g. latest, v1.0.0, dev" 
+                    class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+            </div>
+
+            <div class="pt-3 border-t border-blue-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="closeTagModal()" class="px-4 py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-100 rounded-xl font-medium">Cancel</button>
+                <button type="submit" id="tag-submit-btn" class="px-5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm">
+                    Save Tag
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Inspect Image Details -->
+<div id="inspect-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl border border-blue-100 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col my-auto animate-scale-up">
+        <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+            <h3 class="text-base font-bold text-blue-900">Image Details & Specifications</h3>
+            <button onclick="closeInspectModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100" aria-label="Close">
+                <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-3 text-xs sm:text-sm" id="inspect-content">
+            <div class="divide-y divide-blue-50">
+                <div class="py-2 flex justify-between">
+                    <span class="text-blue-500 font-medium">Image ID</span>
+                    <span class="text-blue-900 font-mono font-semibold" id="inspect-id">-</span>
+                </div>
+                <div class="py-2 flex justify-between">
+                    <span class="text-blue-500 font-medium">Repository Tags</span>
+                    <span class="text-blue-900 font-mono font-semibold break-all text-right" id="inspect-tags">-</span>
+                </div>
+                <div class="py-2 flex justify-between">
+                    <span class="text-blue-500 font-medium">Virtual Size</span>
+                    <span class="text-blue-900 font-semibold" id="inspect-size">-</span>
+                </div>
+                <div class="py-2 flex justify-between">
+                    <span class="text-blue-500 font-medium">OS / Architecture</span>
+                    <span class="text-blue-900 font-semibold" id="inspect-os-arch">-</span>
+                </div>
+                <div class="py-2 flex justify-between">
+                    <span class="text-blue-500 font-medium">Author</span>
+                    <span class="text-blue-900 font-semibold" id="inspect-author">-</span>
+                </div>
+                <div class="py-2 flex justify-between">
+                    <span class="text-blue-500 font-medium">Docker Version</span>
+                    <span class="text-blue-900 font-mono font-semibold" id="inspect-docker-version">-</span>
+                </div>
+                <div class="py-2 flex flex-col space-y-1">
+                    <span class="text-blue-500 font-medium">Default Command (CMD)</span>
+                    <span class="text-blue-900 font-mono text-xs bg-blue-50/50 p-2 rounded-lg break-all" id="inspect-cmd">-</span>
+                </div>
+                <div class="py-2 flex flex-col space-y-1">
+                    <span class="text-blue-500 font-medium">Entrypoint</span>
+                    <span class="text-blue-900 font-mono text-xs bg-blue-50/50 p-2 rounded-lg break-all" id="inspect-entrypoint">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 py-3 bg-slate-50 border-t border-blue-100 flex justify-end">
+            <button onclick="closeInspectModal()" class="px-4 py-1.5 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // Search / Filter
+    function filterImages() {
+        const query = document.getElementById('search-input').value.toLowerCase().trim();
+        
+        // Desktop rows
+        document.querySelectorAll('.image-row').forEach(row => {
+            const text = row.getAttribute('data-search') || '';
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+
+        // Mobile items
+        document.querySelectorAll('.image-item').forEach(item => {
+            const text = item.getAttribute('data-search') || '';
+            item.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    // Modal: Build Image
+    function openBuildModal() {
+        document.getElementById('build-modal').classList.remove('hidden');
+        document.getElementById('build-status').classList.add('hidden');
+        document.getElementById('build-logs-container').classList.add('hidden');
+        document.getElementById('build-logs-container').innerText = '';
+        document.getElementById('build-form').reset();
+        document.getElementById('build-tag').value = 'latest';
+        document.getElementById('build-dockerfile').value = 'Dockerfile';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeBuildModal() {
+        document.getElementById('build-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    async function handleBuildSubmit(e) {
+        e.preventDefault();
+        const source = document.getElementById('build-source').value.trim();
+        const name = document.getElementById('build-name').value.trim();
+        const tag = document.getElementById('build-tag').value.trim() || 'latest';
+        const dockerfile = document.getElementById('build-dockerfile').value.trim() || 'Dockerfile';
+
+        if (!source || !name) return;
+
+        const submitBtn = document.getElementById('build-submit-btn');
+        const statusBox = document.getElementById('build-status');
+        const statusText = document.getElementById('build-status-text');
+        const logsBox = document.getElementById('build-logs-container');
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Building...';
+        statusBox.classList.remove('hidden');
+        logsBox.classList.add('hidden');
+        statusText.innerText = `Packaging context and building "${name}:${tag}"... please wait.`;
+
+        try {
+            const res = await fetch('/images/api/build', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source, name, tag, dockerfile })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                if (data.logs) {
+                    logsBox.innerText = data.logs;
+                    logsBox.classList.remove('hidden');
+                }
+                showToast({ message: data.message || 'Image built successfully', type: 'success' });
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showAlert({ title: 'Build Failed', text: data.error || 'Failed to build image', type: 'error' });
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Build Image';
+                statusBox.classList.add('hidden');
+            }
+        } catch (err) {
+            showAlert({ title: 'Error', text: 'Failed to connect to server', type: 'error' });
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Build Image';
+            statusBox.classList.add('hidden');
+        }
+    }
+
+    // Modal: Pull Image
+    function openPullModal() {
+        document.getElementById('pull-modal').classList.remove('hidden');
+        document.getElementById('pull-status').classList.add('hidden');
+        document.getElementById('pull-form').reset();
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePullModal() {
+        document.getElementById('pull-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function selectImagePreset(name) {
+        document.getElementById('pull-image-input').value = name;
+    }
+
+    async function handlePullSubmit(e) {
+        e.preventDefault();
+        const image = document.getElementById('pull-image-input').value.trim();
+        if (!image) return;
+
+        const submitBtn = document.getElementById('pull-submit-btn');
+        const statusBox = document.getElementById('pull-status');
+        const statusText = document.getElementById('pull-status-text');
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Pulling...';
+        statusBox.classList.remove('hidden');
+        statusText.innerText = `Pulling layers for "${image}" from registry... please wait.`;
+
+        try {
+            const res = await fetch('/images/api/pull', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast({ message: data.message || 'Image pulled successfully', type: 'success' });
+                setTimeout(() => window.location.reload(), 600);
+            } else {
+                showAlert({ title: 'Pull Failed', text: data.error || 'Failed to pull image', type: 'error' });
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Pull Image';
+                statusBox.classList.add('hidden');
+            }
+        } catch (err) {
+            showAlert({ title: 'Error', text: 'Failed to connect to server', type: 'error' });
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Pull Image';
+            statusBox.classList.add('hidden');
+        }
+    }
+
+    // Modal: Edit / Tag Image
+    function openTagModal(id, currentTag = '') {
+        document.getElementById('tag-image-id').value = id;
+        document.getElementById('tag-display-id').innerText = id;
+        document.getElementById('tag-display-tag').innerText = currentTag || '-';
+        
+        const parts = currentTag.split(':');
+        document.getElementById('tag-repo-input').value = parts[0] !== '<none>' ? parts[0] : '';
+        document.getElementById('tag-tag-input').value = parts[1] || 'latest';
+
+        document.getElementById('tag-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeTagModal() {
+        document.getElementById('tag-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    async function handleTagSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('tag-image-id').value;
+        const repo = document.getElementById('tag-repo-input').value.trim();
+        const tag = document.getElementById('tag-tag-input').value.trim() || 'latest';
+        const submitBtn = document.getElementById('tag-submit-btn');
+
+        if (!id || !repo) return;
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving...';
+
+        try {
+            const res = await fetch(`/images/api/${id}/tag`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repo, tag })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast({ message: data.message || 'Image tagged successfully', type: 'success' });
+                setTimeout(() => window.location.reload(), 600);
+            } else {
+                showAlert({ title: 'Tagging Failed', text: data.error || 'Failed to tag image', type: 'error' });
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Save Tag';
+            }
+        } catch (err) {
+            showAlert({ title: 'Error', text: 'Failed to connect to server', type: 'error' });
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Save Tag';
+        }
+    }
+
+    // Modal: Inspect Image Details
+    async function openInspectModal(id) {
+        document.getElementById('inspect-id').innerText = id;
+        document.getElementById('inspect-tags').innerText = 'Loading...';
+        document.getElementById('inspect-size').innerText = '-';
+        document.getElementById('inspect-os-arch').innerText = '-';
+        document.getElementById('inspect-author').innerText = '-';
+        document.getElementById('inspect-docker-version').innerText = '-';
+        document.getElementById('inspect-cmd').innerText = '-';
+        document.getElementById('inspect-entrypoint').innerText = '-';
+
+        document.getElementById('inspect-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+        try {
+            const res = await fetch(`/images/api/${id}`);
+            const data = await res.json();
+
+            if (data && !data.error) {
+                document.getElementById('inspect-id').innerText = data.id || id;
+                document.getElementById('inspect-tags').innerText = (data.tags && data.tags.length > 0) ? data.tags.join(', ') : '<none>';
+                document.getElementById('inspect-size').innerText = data.size;
+                document.getElementById('inspect-os-arch').innerText = `${data.os} / ${data.architecture}`;
+                document.getElementById('inspect-author').innerText = data.author || '-';
+                document.getElementById('inspect-docker-version').innerText = data.dockerVersion || '-';
+                document.getElementById('inspect-cmd').innerText = data.cmd || 'None';
+                document.getElementById('inspect-entrypoint').innerText = data.entrypoint || 'None';
+            } else {
+                showAlert({ title: 'Error', text: data.error || 'Failed to inspect image', type: 'error' });
+            }
+        } catch (err) {
+            showAlert({ title: 'Error', text: 'Failed to load image details', type: 'error' });
+        }
+    }
+
+    function closeInspectModal() {
+        document.getElementById('inspect-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // Delete Image
     async function deleteImage(id, tag = '') {
         const confirmed = await showConfirm({
             title: 'Delete Image?',
@@ -121,6 +666,16 @@
             showAlert({ title: 'Error', text: 'Failed to connect to server', type: 'error' });
         }
     }
+
+    // Close on outside click
+    ['build-modal', 'pull-modal', 'tag-modal', 'inspect-modal'].forEach(modalId => {
+        document.getElementById(modalId)?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+    });
 </script>
 
 <%- include('partials/footer') %>

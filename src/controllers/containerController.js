@@ -97,7 +97,7 @@ const getStats = async (req, res) => {
 
 const createContainer = async (req, res) => {
     try {
-        const { name, image, ports, env, volumes, restartPolicy, autoStart } = req.body;
+        const { name, image, ports, env, volumes, restartPolicy, memoryLimit, autoStart } = req.body;
         if (!image) {
             return res.status(400).json({ error: 'Image name is required' });
         }
@@ -108,6 +108,7 @@ const createContainer = async (req, res) => {
             env,
             volumes,
             restartPolicy,
+            memoryLimit,
             autoStart: autoStart !== false
         });
         res.json({ success: true, ...result });
@@ -118,7 +119,7 @@ const createContainer = async (req, res) => {
 
 const updateContainer = async (req, res) => {
     try {
-        const { name, image, ports, env, volumes, restartPolicy, autoStart } = req.body;
+        const { name, image, ports, env, volumes, restartPolicy, memoryLimit, autoStart } = req.body;
         if (!image) {
             return res.status(400).json({ error: 'Image name is required' });
         }
@@ -129,6 +130,7 @@ const updateContainer = async (req, res) => {
             env,
             volumes,
             restartPolicy,
+            memoryLimit,
             autoStart: autoStart !== false
         });
         res.json({ success: true, ...result });

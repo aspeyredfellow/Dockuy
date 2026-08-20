@@ -1,34 +1,58 @@
 <%- include('partials/header') %>
 
-<div class="space-y-6">
+<div class="space-y-6 max-w-7xl mx-auto">
     <% if (typeof error !== 'undefined' && error) { %>
-        <div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-            <%= error %>
+        <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <svg width="18" height="18" class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <span><%= error %></span>
+            </div>
         </div>
     <% } %>
 
     <!-- Containers Card -->
     <div class="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
         <div class="px-4 sm:px-6 py-4 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 class="text-lg font-bold text-blue-900">Active & Inactive Containers</h2>
-            <div class="flex items-center space-x-2">
-                <button onclick="openModal('create')" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center shadow-sm">
+            <div>
+                <h2 class="text-lg font-bold text-blue-900">Docker Containers</h2>
+                <p class="text-xs text-blue-400 mt-0.5"><%= containers ? containers.length : 0 %> total containers on host</p>
+            </div>
+            <div class="flex items-center space-x-2 flex-wrap">
+                <button onclick="openModal('create')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-semibold flex items-center shadow-sm transition-colors">
                     <svg width="16" height="16" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
                     Create Container
                 </button>
-                <button onclick="window.location.reload()" class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                <button onclick="window.location.reload()" class="px-3 py-2 bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200 text-xs sm:text-sm font-medium transition-colors">
                     Refresh
                 </button>
             </div>
         </div>
+
+        <!-- Search / Filter Bar -->
+        <div class="px-4 sm:px-6 py-3 bg-blue-50/30 border-b border-blue-100">
+            <div class="relative max-w-sm">
+                <input 
+                    type="text" 
+                    id="container-search" 
+                    onkeyup="filterContainers()" 
+                    placeholder="Search containers by name, image, or status..." 
+                    class="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-blue-200 rounded-lg text-gray-900 placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <svg width="16" height="16" class="w-4 h-4 absolute left-3 top-2.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
         
-        <!-- Mobile Card List (Screen < md, No scroll needed) -->
-        <div class="block md:hidden divide-y divide-blue-100">
+        <!-- Mobile Card List (Screen < md) -->
+        <div class="block md:hidden divide-y divide-blue-100" id="mobile-container-list">
             <% if (containers && containers.length > 0) { %>
                 <% containers.forEach(c => { %>
-                    <div class="p-4 space-y-3">
+                    <div class="p-4 space-y-3 container-item" data-search="<%= c.name.toLowerCase() %> <%= c.image.toLowerCase() %> <%= c.status.toLowerCase() %>">
                         <div class="flex items-start justify-between">
                             <div>
                                 <div class="flex items-center space-x-2">
@@ -37,15 +61,20 @@
                                 </div>
                                 <p class="text-xs font-mono text-blue-600 mt-1 pl-4 break-all"><%= c.image %></p>
                             </div>
-                            <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded <%= c.running ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600' %>">
-                                <%= c.status %>
-                            </span>
+                            <div class="flex flex-col items-end space-y-1">
+                                <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded-md border <%= c.running ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200' %>">
+                                    <%= c.status %>
+                                </span>
+                                <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-100">
+                                    RAM: <%= c.memoryLimit || 'No limit' %>
+                                </span>
+                            </div>
                         </div>
 
                         <% if (c.ports && c.ports.length > 0) { %>
                             <div class="flex flex-wrap gap-1 pl-4">
                                 <% c.ports.forEach(p => { %>
-                                    <span class="inline-block bg-blue-50 text-blue-800 text-xs px-1.5 py-0.5 rounded font-mono">
+                                    <span class="inline-block bg-blue-50 text-blue-800 text-xs px-2 py-0.5 rounded-md border border-blue-100 font-mono">
                                         <%= p.PublicPort ? `${p.IP}:${p.PublicPort}->${p.PrivatePort}` : p.PrivatePort %>/<%= p.Type %>
                                     </span>
                                 <% }) %>
@@ -60,37 +89,38 @@
                             <% } %>
                             <button onclick="controlContainer('<%= c.id %>', 'restart')" class="py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-lg border border-blue-200 text-center">Restart</button>
                             <button onclick="openEditModal('<%= c.id %>')" class="py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-xs rounded-lg border border-amber-200 text-center">Edit</button>
-                            <button onclick="deleteContainer('<%= c.id %>', '<%= c.name %>')" class="py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-lg text-center">Delete</button>
+                            <button onclick="deleteContainer('<%= c.id %>', '<%= c.name %>')" class="py-1.5 bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-700 font-semibold text-xs rounded-lg border border-slate-200 text-center">Delete</button>
                         </div>
                     </div>
                 <% }) %>
             <% } else { %>
                 <div class="p-8 text-center text-sm text-blue-400">
-                    No containers found
+                    No containers found. Click "Create Container" to start one.
                 </div>
             <% } %>
         </div>
 
         <!-- Desktop Table View (Screen >= md) -->
         <div class="hidden md:block">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse" id="desktop-container-table">
                 <thead>
                     <tr class="bg-blue-50/50 text-xs font-semibold text-blue-500 uppercase border-b border-blue-100">
                         <th class="px-6 py-3.5">Status</th>
                         <th class="px-6 py-3.5">Name</th>
                         <th class="px-6 py-3.5">Image</th>
-                        <th class="px-6 py-3.5">Ports</th>
+                        <th class="px-6 py-3.5">RAM Limit</th>
+                        <th class="px-6 py-3.5">Port Mapping</th>
                         <th class="px-6 py-3.5 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-blue-100 text-sm">
                     <% if (containers && containers.length > 0) { %>
                         <% containers.forEach(c => { %>
-                            <tr class="hover:bg-blue-50/20 transition-colors">
+                            <tr class="hover:bg-blue-50/20 transition-colors container-row" data-search="<%= c.name.toLowerCase() %> <%= c.image.toLowerCase() %> <%= c.status.toLowerCase() %>">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="flex items-center">
-                                        <span class="status-dot <%= c.running ? 'running' : 'stopped' %> mr-2"></span>
-                                        <span class="text-xs font-semibold uppercase text-blue-700"><%= c.status %></span>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold uppercase border <%= c.running ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200' %>">
+                                        <span class="status-dot <%= c.running ? 'running' : 'stopped' %> mr-1.5"></span>
+                                        <span><%= c.status %></span>
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 font-semibold text-blue-900">
@@ -100,9 +130,14 @@
                                     <%= c.image %>
                                 </td>
                                 <td class="px-6 py-4 text-xs">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md font-medium text-xs border <%= c.memoryLimit && c.memoryLimit !== 'No limit' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-slate-50 text-slate-500 border-slate-200' %>">
+                                        <%= c.memoryLimit || 'No limit' %>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-xs">
                                     <% if (c.ports && c.ports.length > 0) { %>
                                         <% c.ports.forEach(p => { %>
-                                            <span class="inline-block bg-blue-50 text-blue-800 rounded px-1.5 py-0.5 mr-1 mb-1 font-mono">
+                                            <span class="inline-block bg-blue-50 text-blue-800 border border-blue-100 rounded px-2 py-0.5 mr-1 mb-1 font-mono">
                                                 <%= p.PublicPort ? `${p.IP}:${p.PublicPort}->${p.PrivatePort}` : p.PrivatePort %>/<%= p.Type %>
                                             </span>
                                         <% }) %>
@@ -113,21 +148,21 @@
                                 <td class="px-6 py-4 text-right whitespace-nowrap text-xs font-medium">
                                     <div class="inline-flex items-center space-x-1.5">
                                         <% if (c.running) { %>
-                                            <button onclick="controlContainer('<%= c.id %>', 'stop')" class="px-2.5 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">Stop</button>
+                                            <button onclick="controlContainer('<%= c.id %>', 'stop')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg border border-red-200 transition-colors">Stop</button>
                                         <% } else { %>
-                                            <button onclick="controlContainer('<%= c.id %>', 'start')" class="px-2.5 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">Start</button>
+                                            <button onclick="controlContainer('<%= c.id %>', 'start')" class="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 font-medium rounded-lg border border-green-200 transition-colors">Start</button>
                                         <% } %>
-                                        <button onclick="controlContainer('<%= c.id %>', 'restart')" class="px-2.5 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Restart</button>
-                                        <button onclick="openEditModal('<%= c.id %>')" class="px-2.5 py-1 bg-amber-100 text-amber-700 rounded hover:bg-amber-200">Edit</button>
-                                        <button onclick="deleteContainer('<%= c.id %>', '<%= c.name %>')" class="px-2.5 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Delete</button>
+                                        <button onclick="controlContainer('<%= c.id %>', 'restart')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200 transition-colors">Restart</button>
+                                        <button onclick="openEditModal('<%= c.id %>')" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-lg border border-amber-200 transition-colors">Edit</button>
+                                        <button onclick="deleteContainer('<%= c.id %>', '<%= c.name %>')" class="px-2.5 py-1 bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-700 font-medium rounded-lg border border-slate-200 transition-colors">Delete</button>
                                     </div>
                                 </td>
                             </tr>
                         <% }) %>
                     <% } else { %>
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center text-blue-400">
-                                No containers found
+                            <td colspan="6" class="px-6 py-12 text-center text-blue-400">
+                                No containers found. Click "Create Container" to start one.
                             </td>
                         </tr>
                     <% } %>
@@ -139,10 +174,10 @@
 
 <!-- Container Modal (Create & Edit) -->
 <div id="container-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-white rounded-2xl border border-blue-100 shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col my-auto overflow-hidden">
+    <div class="bg-white rounded-2xl border border-blue-100 shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col my-auto overflow-hidden animate-scale-up">
         <!-- Modal Header -->
-        <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-blue-100 flex items-center justify-between bg-white flex-shrink-0">
-            <h3 id="modal-title" class="text-base sm:text-lg font-bold text-blue-900">Create New Container</h3>
+        <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between bg-white flex-shrink-0">
+            <h3 id="modal-title" class="text-base font-bold text-blue-900">Create New Container</h3>
             <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100" aria-label="Close">
                 <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -155,55 +190,85 @@
             <input type="hidden" id="edit-container-id" value="">
 
             <!-- Scrollable Content -->
-            <div class="p-4 sm:p-6 overflow-y-auto space-y-3.5">
-                <!-- Presets (Wrapped, no scroll) -->
+            <div class="p-5 overflow-y-auto space-y-4">
+                <!-- Presets -->
                 <div id="presets-section">
                     <label class="block text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1.5">Quick Presets</label>
                     <div class="flex flex-wrap gap-1.5 text-xs">
-                        <button type="button" onclick="selectPreset('nginx:latest', '8080:80')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">nginx</button>
-                        <button type="button" onclick="selectPreset('redis:alpine', '6379:6379')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">redis</button>
-                        <button type="button" onclick="selectPreset('mysql:8.0', '3306:3306', 'MYSQL_ROOT_PASSWORD=secret')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">mysql</button>
-                        <button type="button" onclick="selectPreset('postgres:15-alpine', '5432:5432', 'POSTGRES_PASSWORD=secret')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">postgres</button>
-                        <button type="button" onclick="selectPreset('mongo:latest', '27017:27017')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">mongodb</button>
-                        <button type="button" onclick="selectPreset('node:alpine', '3000:3000')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">node</button>
+                        <button type="button" onclick="selectPreset('nginx:latest', '8080:80', '', '256')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">nginx</button>
+                        <button type="button" onclick="selectPreset('redis:alpine', '6379:6379', '', '256')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">redis</button>
+                        <button type="button" onclick="selectPreset('mysql:8.0', '3306:3306', 'MYSQL_ROOT_PASSWORD=secret', '1024')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">mysql</button>
+                        <button type="button" onclick="selectPreset('postgres:15-alpine', '5432:5432', 'POSTGRES_PASSWORD=secret', '1024')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">postgres</button>
+                        <button type="button" onclick="selectPreset('mongo:latest', '27017:27017', '', '1024')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">mongodb</button>
+                        <button type="button" onclick="selectPreset('node:alpine', '3000:3000', '', '512')" class="px-2.5 py-1 font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200">node</button>
                     </div>
                 </div>
 
                 <!-- Image -->
                 <div>
                     <label for="form-image" class="block text-xs font-semibold text-gray-700 mb-1">Docker Image *</label>
-                    <input type="text" id="form-image" name="image" required placeholder="e.g. nginx:latest, redis:alpine" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="form-image" name="image" list="local-images-list" required placeholder="e.g. nginx:latest, redis:alpine, my-project:latest" class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                    <datalist id="local-images-list"></datalist>
+                    <p class="text-xs text-blue-400 mt-1">Select from local images or enter any image from Docker Hub.</p>
                 </div>
 
                 <!-- Name -->
                 <div>
                     <label for="form-name" class="block text-xs font-semibold text-gray-700 mb-1">Container Name (optional)</label>
-                    <input type="text" id="form-name" name="name" placeholder="e.g. my-app" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="form-name" name="name" placeholder="e.g. my-app" class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
                 </div>
 
                 <!-- Port Mappings -->
                 <div>
                     <label for="form-ports" class="block text-xs font-semibold text-gray-700 mb-1">Port Mapping (host:container)</label>
-                    <input type="text" id="form-ports" name="ports" placeholder="e.g. 8080:80, 443:443" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="form-ports" name="ports" placeholder="e.g. 8080:80, 443:443" class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                </div>
+
+                <!-- Memory Limit (RAM) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="form-memory" class="block text-xs font-semibold text-gray-700">Memory / RAM Limit</label>
+                        <span class="text-[11px] text-blue-500">0 = Unlimited</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 mb-2 text-xs">
+                        <button type="button" onclick="setMemoryLimit(0)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200">No Limit</button>
+                        <button type="button" onclick="setMemoryLimit(128)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200">128 MB</button>
+                        <button type="button" onclick="setMemoryLimit(256)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200">256 MB</button>
+                        <button type="button" onclick="setMemoryLimit(512)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200">512 MB</button>
+                        <button type="button" onclick="setMemoryLimit(1024)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200">1 GB</button>
+                        <button type="button" onclick="setMemoryLimit(2048)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg border border-blue-200">2 GB</button>
+                    </div>
+                    <div class="relative">
+                        <input 
+                            type="number" 
+                            id="form-memory" 
+                            name="memoryLimit" 
+                            min="0" 
+                            placeholder="0 (Unlimited)" 
+                            class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                        />
+                        <span class="absolute right-3.5 top-2.5 text-xs text-blue-500 font-semibold pointer-events-none">MB</span>
+                    </div>
+                    <p class="text-xs text-blue-400 mt-1">Prevents this container from starving other services of RAM.</p>
                 </div>
 
                 <!-- Environment Variables -->
                 <div>
                     <label for="form-env" class="block text-xs font-semibold text-gray-700 mb-1">Environment Variables (KEY=VALUE per line)</label>
-                    <textarea id="form-env" name="env" rows="2" placeholder="NODE_ENV=production&#10;PORT=3000" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-200 rounded-xl text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <textarea id="form-env" name="env" rows="2" placeholder="NODE_ENV=production&#10;PORT=3000" class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
 
                 <!-- Volume Mounts -->
                 <div>
                     <label for="form-volumes" class="block text-xs font-semibold text-gray-700 mb-1">Volume Mounts (host_path:container_path per line)</label>
-                    <textarea id="form-volumes" name="volumes" rows="2" placeholder="/host/data:/data" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-200 rounded-xl text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <textarea id="form-volumes" name="volumes" rows="2" placeholder="/host/data:/data" class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-xs sm:text-sm font-mono text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
 
                 <!-- Restart Policy & Auto Start -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                         <label for="form-restart" class="block text-xs font-semibold text-gray-700 mb-1">Restart Policy</label>
-                        <select id="form-restart" name="restartPolicy" class="w-full px-3 py-2 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="form-restart" name="restartPolicy" class="w-full px-3.5 py-2.5 bg-blue-50/30 border border-blue-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="unless-stopped">unless-stopped</option>
                             <option value="always">always</option>
                             <option value="on-failure">on-failure</option>
@@ -212,13 +277,13 @@
                     </div>
                     <div class="flex items-center space-x-2 pt-1 sm:pt-6">
                         <input type="checkbox" id="form-autostart" name="autoStart" checked class="w-4 h-4 text-blue-600 rounded border-blue-300 focus:ring-blue-500">
-                        <label for="form-autostart" class="text-xs font-medium text-gray-700 select-none cursor-pointer">Start container immediately</label>
+                        <label for="form-autostart" class="text-xs font-medium text-gray-700 select-none cursor-pointer">Start immediately</label>
                     </div>
                 </div>
             </div>
 
             <!-- Sticky Modal Footer -->
-            <div class="px-4 sm:px-6 py-3 bg-slate-50/80 border-t border-blue-100 flex items-center justify-end space-x-2 flex-shrink-0">
+            <div class="px-5 py-3.5 bg-slate-50 border-t border-blue-100 flex items-center justify-end space-x-2 flex-shrink-0">
                 <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-100 rounded-xl font-medium">Cancel</button>
                 <button type="submit" id="submit-btn" class="px-5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl font-semibold shadow-sm flex items-center">
                     Create Container
@@ -229,6 +294,25 @@
 </div>
 
 <script>
+    // Search / Filter
+    function filterContainers() {
+        const query = document.getElementById('container-search').value.toLowerCase().trim();
+        
+        document.querySelectorAll('.container-row').forEach(row => {
+            const text = row.getAttribute('data-search') || '';
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+
+        document.querySelectorAll('.container-item').forEach(item => {
+            const text = item.getAttribute('data-search') || '';
+            item.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function setMemoryLimit(mb) {
+        document.getElementById('form-memory').value = mb > 0 ? mb : '';
+    }
+
     function openModal(mode = 'create') {
         const modal = document.getElementById('container-modal');
         const title = document.getElementById('modal-title');
@@ -238,6 +322,7 @@
         if (mode === 'create') {
             document.getElementById('edit-container-id').value = '';
             document.getElementById('container-form').reset();
+            document.getElementById('form-memory').value = '';
             title.innerText = 'Create New Container';
             submitBtn.innerText = 'Create Container';
             presets.classList.remove('hidden');
@@ -265,6 +350,7 @@
                 document.getElementById('form-name').value = data.name || '';
                 document.getElementById('form-image').value = data.image || '';
                 document.getElementById('form-ports').value = data.formattedPorts || '';
+                document.getElementById('form-memory').value = data.memoryLimit > 0 ? data.memoryLimit : '';
                 document.getElementById('form-env').value = data.env || '';
                 document.getElementById('form-volumes').value = data.volumes || '';
                 document.getElementById('form-restart').value = data.restartPolicy || 'unless-stopped';
@@ -288,11 +374,14 @@
         }
     });
 
-    function selectPreset(image, ports, env = '') {
+    function selectPreset(image, ports, env = '', memory = '') {
         document.getElementById('form-image').value = image;
         document.getElementById('form-ports').value = ports;
         if (env) {
             document.getElementById('form-env').value = env;
+        }
+        if (memory) {
+            document.getElementById('form-memory').value = memory;
         }
     }
 
@@ -303,12 +392,13 @@
         const submitBtn = document.getElementById('submit-btn');
 
         submitBtn.disabled = true;
-        submitBtn.innerText = isEdit ? 'Updating & recreating...' : 'Creating & pulling...';
+        submitBtn.innerText = isEdit ? 'Updating...' : 'Creating...';
 
         const payload = {
             image: document.getElementById('form-image').value,
             name: document.getElementById('form-name').value,
             ports: document.getElementById('form-ports').value,
+            memoryLimit: document.getElementById('form-memory').value,
             env: document.getElementById('form-env').value,
             volumes: document.getElementById('form-volumes').value,
             restartPolicy: document.getElementById('form-restart').value,
@@ -385,6 +475,32 @@
             showAlert({ title: 'Error', text: 'Failed to send request', type: 'error' });
         }
     }
+
+    // Load local images into datalist for auto-suggest
+    async function loadLocalImages() {
+        try {
+            const res = await fetch('/images/api');
+            const images = await res.json();
+            if (Array.isArray(images)) {
+                const datalist = document.getElementById('local-images-list');
+                if (datalist) {
+                    datalist.innerHTML = images.map(img => `<option value="${img.primaryTag}">${img.size}</option>`).join('');
+                }
+            }
+        } catch (e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLocalImages();
+
+        // Check if redirected from Images page with pre-selected image
+        const urlParams = new URLSearchParams(window.location.search);
+        const preselectedImage = urlParams.get('image');
+        if (preselectedImage) {
+            openModal('create');
+            document.getElementById('form-image').value = decodeURIComponent(preselectedImage);
+        }
+    });
 </script>
 
 <%- include('partials/footer') %>
