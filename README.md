@@ -167,7 +167,6 @@ Dockuy/
 │   │   └── login.ejs             # Login view
 │   ├── app.js                    # Express application setup
 │   └── server.js                 # Server entry point
-├── fitur.md                      # Feature roadmap document
 ├── package.json                  # Node.js dependencies and scripts
 └── README.md                     # Project documentation
 ```
