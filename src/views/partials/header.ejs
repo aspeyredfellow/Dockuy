@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'Dockuy' %></title>
+    <link rel="stylesheet" href="/css/tailwind.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.running { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+        .status-dot.stopped { background: #93c5fd; }
+        .card-hover { transition: all 0.15s ease; }
+        .card-hover:hover { background-color: rgba(239, 246, 255, 0.4); }
+        .sidebar-link { transition: all 0.2s ease; }
+        .sidebar-link:hover { background: rgba(59,130,246,0.05); color: #2563eb; }
+        .sidebar-link.active { background: rgba(59,130,246,0.1); color: #2563eb; border-right: 3px solid #2563eb; }
+    </style>
+</head>
+<body class="bg-white text-gray-900">
+
+    <div class="flex h-screen overflow-hidden">
+        <%- include('sidebar') %>
+        <div class="flex-1 flex flex-col overflow-hidden bg-blue-50/20">
+            <header class="bg-white border-b border-blue-100 px-4 sm:px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-blue-600 hover:bg-blue-50 focus:outline-none" aria-label="Toggle menu">
+                        <svg width="24" height="24" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-900">
+                        <%= typeof title !== 'undefined' ? title.split('|')[0].trim() : 'Dashboard' %>
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="/logout" 
+                       title="Logout" 
+                       aria-label="Logout"
+                       class="group relative inline-flex items-center justify-center p-2 sm:p-2.5 rounded-xl text-blue-600 bg-blue-50/80 hover:bg-red-50 hover:text-red-600 border border-blue-100 hover:border-red-200 transition-all duration-200 shadow-sm active:scale-95">
+                        <svg class="w-5 h-5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        <span class="sr-only">Logout</span>
+                    </a>
+                </div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6">

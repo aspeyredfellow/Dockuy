@@ -1,0 +1,265 @@
+<%- include('partials/header') %>
+
+<div class="space-y-5 max-w-7xl mx-auto">
+    <!-- Error Banner -->
+    <div id="error-banner" class="hidden p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+            <svg width="18" height="18" class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <span id="error-text" class="text-xs sm:text-sm font-medium">Failed to connect to Docker daemon</span>
+        </div>
+        <button onclick="loadSystemStats(true)" class="px-3 py-1 bg-white border border-red-200 text-red-700 text-xs font-medium rounded-lg hover:bg-red-50">
+            Retry
+        </button>
+    </div>
+
+    <!-- Header Section (Flat & Grounded) -->
+    <div class="bg-white border border-blue-100 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center space-x-2">
+                <h1 class="text-xl font-bold text-blue-900">Docker Host Overview</h1>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-600 mr-1.5"></span>
+                    Connected
+                </span>
+            </div>
+            <p class="text-xs text-blue-400 mt-1">Real-time status of host containers, resources, and Docker engine.</p>
+        </div>
+        
+        <div class="flex items-center space-x-2.5">
+            <button id="refresh-btn" onclick="loadSystemStats(true)" class="inline-flex items-center px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200 transition-colors">
+                <svg id="refresh-icon" width="15" height="15" class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <span>Refresh</span>
+            </button>
+            <a href="/containers" class="inline-flex items-center px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                <svg width="15" height="15" class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>Manage Containers</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 4 Flat Stat Panels (Unified Flat Card Layout) -->
+    <div class="bg-white border border-blue-100 rounded-xl overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-blue-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Containers -->
+        <div class="p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs font-semibold text-blue-500 uppercase tracking-wide">
+                <span>Total Containers</span>
+                <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg width="18" height="18" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-bold text-blue-900" id="stat-containers">-</div>
+                <div class="mt-2 flex items-center space-x-3 text-xs">
+                    <span class="flex items-center text-blue-700 font-medium">
+                        <span class="status-dot running mr-1.5"></span><span id="stat-running">0</span> Running
+                    </span>
+                    <span class="flex items-center text-blue-400 font-medium">
+                        <span class="status-dot stopped mr-1.5"></span><span id="stat-stopped">0</span> Stopped
+                    </span>
+                </div>
+                <!-- Mini Progress Track -->
+                <div class="mt-2.5 w-full h-1.5 bg-blue-100 rounded-full overflow-hidden flex">
+                    <div id="bar-running" class="h-full bg-blue-600 progress-bar-fill" style="width: 0%"></div>
+                    <div id="bar-stopped" class="h-full bg-blue-300 progress-bar-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Images -->
+        <div class="p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs font-semibold text-blue-500 uppercase tracking-wide">
+                <span>Docker Images</span>
+                <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg width="18" height="18" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-bold text-blue-900" id="stat-images">-</div>
+                <div class="mt-2 text-xs text-blue-400">
+                    Local images available
+                </div>
+            </div>
+        </div>
+
+        <!-- CPUs -->
+        <div class="p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs font-semibold text-blue-500 uppercase tracking-wide">
+                <span>CPU Cores</span>
+                <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg width="18" height="18" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                    </svg>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-bold text-blue-900" id="stat-cpus">-</div>
+                <div class="mt-2 text-xs text-blue-400">
+                    Architecture: <span id="stat-arch-badge" class="font-mono font-medium text-blue-600">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory -->
+        <div class="p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs font-semibold text-blue-500 uppercase tracking-wide">
+                <span>Host Memory</span>
+                <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg width="18" height="18" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 9.172V5L8 4z"></path>
+                    </svg>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-bold text-blue-900" id="stat-memory">-</div>
+                <div class="mt-2 text-xs text-blue-400">
+                    System RAM allocated
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Docker Daemon Information (Clean Flat Table Layout) -->
+    <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-blue-900">Docker Daemon Specifications</h2>
+            <span class="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100" id="info-version-badge">v-</span>
+        </div>
+        <div class="divide-y divide-blue-50 text-xs sm:text-sm">
+            <div class="px-5 py-3 flex items-center justify-between">
+                <span class="text-blue-500 font-medium">Docker Version</span>
+                <span class="text-blue-900 font-mono font-semibold" id="info-version">-</span>
+            </div>
+            <div class="px-5 py-3 flex items-center justify-between">
+                <span class="text-blue-500 font-medium">Operating System</span>
+                <span class="text-blue-900 font-semibold" id="info-os">-</span>
+            </div>
+            <div class="px-5 py-3 flex items-center justify-between">
+                <span class="text-blue-500 font-medium">Architecture</span>
+                <span class="text-blue-900 font-mono font-semibold" id="info-arch">-</span>
+            </div>
+            <div class="px-5 py-3 flex items-center justify-between">
+                <span class="text-blue-500 font-medium">Kernel Version</span>
+                <span class="text-blue-900 font-mono text-xs font-semibold" id="info-kernel">-</span>
+            </div>
+            <div class="px-5 py-3 flex items-center justify-between">
+                <span class="text-blue-500 font-medium">Storage Driver</span>
+                <span class="text-blue-900 font-mono font-semibold" id="info-driver">-</span>
+            </div>
+            <div class="px-5 py-3 flex items-center justify-between">
+                <span class="text-blue-500 font-medium">Docker Root Directory</span>
+                <span class="text-blue-900 font-mono text-xs font-semibold" id="info-root">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Navigation (Flat Cards) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <a href="/containers" class="bg-white border border-blue-100 rounded-xl p-4 flex items-center justify-between hover:bg-blue-50/40 hover:border-blue-200 transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-blue-900">Containers Hub</h3>
+                    <p class="text-xs text-blue-400">View, create, and manage container instances</p>
+                </div>
+            </div>
+            <span class="text-blue-400">&rarr;</span>
+        </a>
+
+        <a href="/images" class="bg-white border border-blue-100 rounded-xl p-4 flex items-center justify-between hover:bg-blue-50/40 hover:border-blue-200 transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-blue-900">Images Repository</h3>
+                    <p class="text-xs text-blue-400">Inspect and clean up local Docker images</p>
+                </div>
+            </div>
+            <span class="text-blue-400">&rarr;</span>
+        </a>
+    </div>
+</div>
+
+<script>
+    async function loadSystemStats(isManual = false) {
+        const refreshIcon = document.getElementById('refresh-icon');
+        if (refreshIcon && isManual) {
+            refreshIcon.classList.add('animate-spin-once');
+            setTimeout(() => refreshIcon.classList.remove('animate-spin-once'), 600);
+        }
+
+        try {
+            const res = await fetch('/api/system/info');
+            const data = await res.json();
+            
+            if (data.error || res.status !== 200) {
+                document.getElementById('error-text').innerText = data.error || 'Failed to fetch system info';
+                document.getElementById('error-banner').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('error-banner').classList.add('hidden');
+            
+            // Core numbers
+            const total = data.containers || 0;
+            const running = data.running || 0;
+            const stopped = data.stopped || (total - running);
+            
+            document.getElementById('stat-containers').innerText = total;
+            document.getElementById('stat-running').innerText = running;
+            document.getElementById('stat-stopped').innerText = stopped >= 0 ? stopped : 0;
+            document.getElementById('stat-images').innerText = data.images || 0;
+            document.getElementById('stat-cpus').innerText = data.cpus || 0;
+            document.getElementById('stat-memory').innerText = (data.memory || 0) + ' GB';
+            
+            // Badges & Specifications
+            const arch = data.arch || 'x86_64';
+            document.getElementById('stat-arch-badge').innerText = arch;
+            document.getElementById('info-arch').innerText = arch;
+            document.getElementById('info-version').innerText = data.version || 'unknown';
+            document.getElementById('info-version-badge').innerText = 'v' + (data.version || '-');
+            document.getElementById('info-os').innerText = data.os || 'Linux';
+            document.getElementById('info-kernel').innerText = data.kernelVersion || '-';
+            document.getElementById('info-driver').innerText = data.driver || 'overlay2';
+            document.getElementById('info-root').innerText = data.dockerRootDir || '/var/lib/docker';
+
+            // Progress bar and percentages
+            let runningPct = 0;
+            let stoppedPct = 0;
+            if (total > 0) {
+                runningPct = Math.round((running / total) * 100);
+                stoppedPct = 100 - runningPct;
+            }
+            
+            document.getElementById('bar-running').style.width = runningPct + '%';
+            document.getElementById('bar-stopped').style.width = (total > 0 && runningPct < 100 ? stoppedPct : 0) + '%';
+
+        } catch (error) {
+            document.getElementById('error-text').innerText = 'Failed to connect to Docker daemon';
+            document.getElementById('error-banner').classList.remove('hidden');
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSystemStats(false);
+    });
+</script>
+
+<%- include('partials/footer') %>
+

@@ -1,0 +1,126 @@
+<%- include('partials/header') %>
+
+<div class="space-y-6">
+    <% if (typeof error !== 'undefined' && error) { %>
+        <div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+            <%= error %>
+        </div>
+    <% } %>
+
+    <!-- Images Container Card -->
+    <div class="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
+        <div class="px-4 sm:px-6 py-4 border-b border-blue-100 flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-blue-900">Local Docker Images</h2>
+                <p class="text-xs text-blue-400 mt-0.5"><%= images ? images.length : 0 %> images available</p>
+            </div>
+            <button onclick="window.location.reload()" class="px-3.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                Refresh
+            </button>
+        </div>
+
+        <!-- Mobile Card List (Screen < md) -->
+        <div class="block md:hidden divide-y divide-blue-100">
+            <% if (images && images.length > 0) { %>
+                <% images.forEach(img => { %>
+                    <div class="p-4 space-y-2.5">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 pr-2">
+                                <h3 class="font-bold text-sm text-blue-900 break-all"><%= img.primaryTag %></h3>
+                                <p class="text-xs font-mono text-blue-400 mt-0.5">ID: <%= img.id %></p>
+                            </div>
+                            <span class="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-200">
+                                <%= img.size %>
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-end pt-1">
+                            <button onclick="deleteImage('<%= img.id %>', '<%= img.primaryTag %>')" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-xs rounded-lg border border-red-200 flex items-center justify-center space-x-1">
+                                <svg width="14" height="14" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Delete Image
+                            </button>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="p-8 text-center text-sm text-blue-400">
+                    No images found locally.
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Desktop Table View (Screen >= md) -->
+        <div class="hidden md:block">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-blue-50/50 text-xs font-semibold text-blue-500 uppercase border-b border-blue-100">
+                        <th class="px-6 py-3.5">Repository / Tag</th>
+                        <th class="px-6 py-3.5">Image ID</th>
+                        <th class="px-6 py-3.5">Size</th>
+                        <th class="px-6 py-3.5 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-blue-100 text-sm">
+                    <% if (images && images.length > 0) { %>
+                        <% images.forEach(img => { %>
+                            <tr class="hover:bg-blue-50/20 transition-colors">
+                                <td class="px-6 py-4 font-semibold text-blue-900">
+                                    <%= img.primaryTag %>
+                                </td>
+                                <td class="px-6 py-4 text-xs font-mono text-blue-600">
+                                    <%= img.id %>
+                                </td>
+                                <td class="px-6 py-4 text-xs font-medium text-gray-600">
+                                    <span class="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md">
+                                        <%= img.size %>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button onclick="deleteImage('<%= img.id %>', '<%= img.primaryTag %>')" class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold rounded-lg transition-colors">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center text-blue-400">
+                                No images found locally.
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function deleteImage(id, tag = '') {
+        const confirmed = await showConfirm({
+            title: 'Delete Image?',
+            text: `Are you sure you want to delete ${tag ? `"${tag}"` : id}? If any container is using it, deletion may fail unless forced.`,
+            confirmText: 'Yes, Delete',
+            cancelText: 'Cancel',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch(`/images/api/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                showToast({ message: 'Image deleted successfully', type: 'success' });
+                setTimeout(() => window.location.reload(), 600);
+            } else {
+                showAlert({ title: 'Delete Failed', text: data.error || 'Failed to delete image', type: 'error' });
+            }
+        } catch (e) {
+            showAlert({ title: 'Error', text: 'Failed to connect to server', type: 'error' });
+        }
+    }
+</script>
+
+<%- include('partials/footer') %>
