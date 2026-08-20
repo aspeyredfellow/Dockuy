@@ -27,7 +27,7 @@ A clean, fast, and lightweight Docker management web UI. No database, no complex
 ### 1. Clone and Install
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/aspeyredfellow/Dockuy.git
 cd Dockuy
 npm install
 ```
